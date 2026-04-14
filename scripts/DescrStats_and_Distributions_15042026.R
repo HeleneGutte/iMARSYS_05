@@ -113,6 +113,10 @@ hist(trees$Height)
 # what do you think?
 shapiro.test(trees$Height)
 
+hist(trees$Height, freq = FALSE) # show the density histogram instead of a frequency histogram
+curve(dnorm(x, mean = 76, sd = 6.371813), from = 60, to = 90, add = TRUE, col = "firebrick", lwd = 2)
+
+
 # use the penguins body mass
 hist(penguins$body_mass)
 # again what do you think? Is this normally distributed?
