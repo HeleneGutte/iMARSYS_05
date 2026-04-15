@@ -1,5 +1,6 @@
 # Lecture script 15.04.2026
 
+# HI
 
 # packages ----
 # install.packages(c("DescTools", "e1071"))
