@@ -8,7 +8,7 @@
 
 plaice_length <- c(36.67, 28.37, 42.67, 38.63, 33.7, 29.39, 38.32, 38.71, 40.59,
                    38.41, 36.82, 40.52, 43.31, 43.64, 37.48)
-
+hist(plaice_length)
 # calculate mean and stadard deviation of your data
 mean(plaice_length) # 37.8215
 sd(plaice_length) # 4.50634
@@ -63,6 +63,8 @@ polar_bears <- data.frame("male" = c(281, 279, 271, 290, 292, 285, 277, 278, 290
                                      285, 287, 279, 275, 280, 287, 285, 282),
                           "female" = c(266, 280, 275, 272, 270, 269, 272, 278, 267, 269, 282,
                                        279, 276, 272, 274, 270, 269, 279, 282, 268))
+View(polar_bears)
+
 boxplot(polar_bears)
 
 ## two-sided ----
@@ -86,11 +88,13 @@ nrow(polar_bears)
 
 qt(p = c(0.025, 0.975), df = 38) # 38 because each has 20 rows and for each sample we subtract by 1
 
-# we use here the negative absolute difference, to avoid a miscalculation simply because the t value is very large
-pt(q = -abs(t_polars), df = 37.844) * 2 
-
 t_polars <- (mean_males - mean_females) / sqrt( (var_males/20) + (var_females/20) )
 t_polars
+
+# we use here the negative absolute difference, to avoid a miscalculation simply because the t value is very large
+pt(q = -abs(t_polars), df = 38) * 2 
+
+
 
 # for equal variances we can also use pooled variances, 
 # this gives us a bit more statistical power: 
@@ -152,6 +156,8 @@ wilcox.test(result ~ group, data = octopus, alternative = "two.sided")
 herring_eggs <- data.frame("Sample" = c(1:10),
                            "subsample_1" = as.integer(jitter(c(130, 90, 50, 323, 210, 35, 173, 44, 241, 112), amount = 10))
                            )
+
+View(herring_eggs)
 difference <- sample(-20:20, 10)
 herring_eggs$subsample_2 <- herring_eggs$subsample_1 + difference
 boxplot(herring_eggs[, c(2:3)])
