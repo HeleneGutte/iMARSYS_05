@@ -1,0 +1,6 @@
+Parameter	FoodA	FoodB	FoodC
+n	30	32	42
+Mean	30.03	32.12	27.69
+s	1.4	1.52	1.18
+Min	27	29	29
+Max	33	35	35
