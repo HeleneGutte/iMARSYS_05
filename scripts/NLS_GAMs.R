@@ -52,7 +52,7 @@ cor(BluegillLM$wght,predict(m1_ls))
 
 
 # 2. Example GAMs ----
-squid <- read.table(file = "data/SquidNorway.txt",header = TRUE,dec = ".")
+squid <- read.table(file = "data/SquidNorway.txt", header = TRUE, dec = ".")
 
 # data set contains data on isotopic ratios (d15N) measured in oceanic squids 
 # (Gonatus fabricii) depending on the latitude, depth and their mantle length.
@@ -155,10 +155,167 @@ help.search("AHerringChile")
 
 # Plot the data, write a model, evaluate the model fit, graphically and by 
 # calculating correlation and R-squared.
+plot(x = AHerringChile$age, y = AHerringChile$len)
+
+nls_herring <- nls(len ~ a*(1 - exp(-b*(age - c))), data = AHerringChile, 
+                   start = list(a = 17, b = 1, c = 0))
+summary(nls_herring)
+idx <- order(AHerringChile$age)
+
+plot(x = AHerringChile$age, y = AHerringChile$len, 
+     pch = 20, col="darkgray", main = "Age - Length",
+     xlab = 'Age', ylab = 'Length')
+lines(sort(AHerringChile$age), predict(nls_herring)[idx],col="red", lwd=2)
+
+
+# Evaluate Goodness of fit
+# correlation between observed and fitted values
+cor(AHerringChile$len,predict(nls_herring)) 
+
+# Residual sum of squares
+(RSS.p <- sum(residuals(nls_herring)^2))
+
+# Total sum of squares
+(TSS <- sum((AHerringChile$len - mean(AHerringChile$len))^2))
+
+# R-squared measure ~ explained variance
+1 - (RSS.p/TSS) 
 
 
 ## 3.b. GAM for Heger Pierce data set: (bioluminescence) Sources ~ Depth
+#Load the data
+BL <- read.table(file = "data/HegerPierce.txt", header = TRUE)
+str(BL)
+names(BL)
+unique(BL$Station)
+plot(x = BL$Depth,  y = BL$Sources, xlab = "Depth",ylab ="Sources", 
+     col = BL$Station)
+
+BL_58 <- BL %>%
+  filter(Station == 58)
+
+
+bl_gam <- gam(Sources ~ s(Depth, k = 5, bs = "cr"), data = BL_58)
+summary(bl_gam)
+
+plot(bl_gam, pages = 1, resid = TRUE, pch = 16, cex = 0.7, cex.lab = 1.5)
+
+par(mfrow = c(2,2))
+gam.check(bl_gam)
+# some patterns in the residuals, normality not really fulfilled
+# patterns are probably due to uneven sampling: many low bioluminescence value
+# and not so many high values were measured. 
+
+bl_gam_pois <- gam(Sources ~ s(Depth, k = 5, bs = "cr"), data = BL_58, family = poisson())
+summary(bl_gam_pois)
+gam.check(bl_gam_pois)
+# looks better
+
 
 
 # 4. Exercises Block 2 ----
 # See lecture slides 
+
+# add Station as a fixed factor term to the GAM
+BL <- BL %>%
+  mutate(station_factor = as.factor(Station))
+
+# first visualize the differences between the stations to see what we are analyzing:
+ggplot(BL, aes(x = station_factor, y = Sources))+
+  geom_boxplot()
+
+bl_fix_station_gam <- gam(Sources ~ station_factor + s(Depth),
+                          data = BL)
+summary(bl_fix_station_gam)
+# note that the summary output includes now for every factor level an individual 
+# intercept in relation to the first factor level (Station 52). That means the
+# intercept of the model is adjusted for each Station individually, while the 
+# smoothing function of Depth is applied to all data points at once. 
+
+# get the fitted values and plot them with the observed values to check the model
+# fit. Use expand.grid() to get a data frame with every combination of the supplied
+# vectors:
+new_data <- expand.grid(Depth = seq(min(BL$Depth), max(BL$Depth), length.out = 200),
+                       station_factor = levels(BL$station_factor))
+
+# predict values for the new data frame:
+new_data$fit <- predict.gam(bl_fix_station_gam, newdata = new_data)
+
+ggplot(BL, aes(x = Depth, y = Sources))+
+  geom_point(aes(colour = station_factor), alpha = 0.5)+
+  geom_line(data = new_data, aes(y = fit, colour = station_factor))+
+  facet_wrap(~station_factor)
+
+# Also visually we can see that the smoothed line is the same for each of the 
+# stations (try also turning the facetting on and off, to better see this), while
+# the intercept changes for each station. 
+
+# inspect the diagnostics: 
+par(mfrow = c(2,2))
+gam.check(bl_fix_station_gam)
+
+# normality not fulfilled, use again cubic splines and a poission error distribution
+# to improve the distribution of residuals: 
+bl_fix_station_gam_pois <- gam(Sources ~ station_factor + s(Depth, bs = "cr"), 
+                               family = poisson, data = BL)
+summary(bl_fix_station_gam_pois)
+# improved explained deviance
+gam.check(bl_fix_station_gam_pois)
+# no improved situation regarding the normality
+
+bl_fix_station_gam_negbino <- gam(Sources ~ station_factor + s(Depth, bs = "cr"), 
+                               family = nb(), data = BL)
+summary(bl_fix_station_gam_negbino)
+# improved explained deviance
+gam.check(bl_fix_station_gam_negbino)
+# better, still skewed, but I will leve it for now. 
+
+# Investigate the other variables and decide which ones are interesting to 
+# include in the analysis. 
+pivot_longer(BL, Eddy:Longitude, names_to = 'Names', values_to = 'Values') %>%
+  ggplot(aes(y = Sources, x = Values))+
+  geom_point() + 
+  geom_smooth(se=FALSE) + 
+  facet_wrap(~Names, scales='free') + 
+  theme_bw()
+
+# the very high fluorescence value looks like a potential outlier --> remove 
+# from analysis and then add fluorescence to the last GAM.
+BL <- BL %>%
+  filter(flcugl < 0.03)%>%
+  mutate(flu_scale = as.vector(scale(flcugl)), 
+         depth_scale = as.vector(scale(Depth)),
+         sources_scale = as.vector(scale(Sources)))
+
+# unnested GAM with three variables: 
+bl_fixstat_dept_fl_unnest_gam <- gam(sources_scale ~ station_factor + s(depth_scale, bs = "cr") +
+                                       s(flu_scale, bs = "cr"), data = BL, family = nb())
+summary(bl_fixstat_dept_fl_unnest_gam)
+
+plot(bl_fixstat_dept_fl_unnest_gam,
+     pages = 1,
+     residuals = TRUE,
+     shade = TRUE)
+
+# 3d plots with the two continuous variables
+vis.gam(bl_fixstat_dept_fl_unnest_gam, view = c("flu_scale", "depth_scale"), 
+        color = 'heat', theta=135)
+
+par(mfrow = c(2,2))
+gam.check(bl_fixstat_dept_fl_unnest_gam)
+dev.off()
+# similar to previous model
+
+# Now try a nested interaction between Depth and fluorescence: 
+bl_fixstat_dept_fl_nested_gam <- gam(sources_scale ~ station_factor + 
+                                       s(depth_scale, flu_scale), 
+                                     data = BL)
+
+plot(bl_fixstat_dept_fl_nested_gam,
+     pages = 1,
+     residuals = TRUE,
+     shade = TRUE)
+
+# with this isoline plot we can see where higher and lower values of Sources will 
+# likely be observed. In this case highest values are expected at medium fluorescence and 
+# at shallower stations (check the 2.5 and 2 isoline at the left of the plot).
