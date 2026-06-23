@@ -1,0 +1,13 @@
+Total catch = sum-over-age-classes(catch-at-age * weight-in-the-catch-at-age)
+SSB = sum-over-age-classes(numbers-at-age * weight-in-the-stock-at-age * maturity-at-age)
+
+File names:
+- Catch.txt = total catch (in tonnes)
+- Catch_AY.txt = catch at age (in numbers)
+- FatAge.txt = fishing mortality at age (for the "average" fishing mortality look up the age classes contributing to it. They vary from stock to stock)
+- MatAge.txt = natural mortality at age (less relevant)
+- NatAge.txt = numbers at age ("cohort size")
+- PatAge.txt = maturity at age
+- R_SSB.txt = recruitment (less relevant) and SSB
+- WatAge.txt = weight-in-the-stock at age
+- WatAge_Catch.txt = weight-in-the-catch at age
